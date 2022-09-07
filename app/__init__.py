@@ -13,6 +13,7 @@ from elasticsearch import Elasticsearch
 from redis import Redis
 import rq
 from config import Config
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -28,6 +29,11 @@ babel = Babel()
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    trust_proxies = int(os.environ.get('ADAPTABLE_TRUST_PROXY_DEPTH') or 0)
+    if trust_proxies > 0:
+        print("Setting proxy info", trust_proxies, flush=True)
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=trust_proxies+1, x_proto=1, x_host=1)
 
     db.init_app(app)
     migrate.init_app(app, db)
